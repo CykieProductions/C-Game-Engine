@@ -1,5 +1,5 @@
 #include "Physics.h"
-
+/*
 Collision_Point PointInPolygon(Vector2 point, Vector2 verts[], uint numOfVerts)
 {
     int i, j = 0;
@@ -91,3 +91,9 @@ Collision_Point PolygonInPolyTrigger(Vector2 firstPoly[], uint numInFirst, Vecto
     return info;
 }
 
+//*/
+
+Vector2 C2VToVec2(c2v vec)
+{
+    return (Vector2) { vec.x, vec.y };
+}

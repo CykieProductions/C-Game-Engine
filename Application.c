@@ -139,39 +139,44 @@ int WinMain(HINSTANCE hInstance, HINSTANCE dep_hPrevInst, PSTR lpCmdLine, int nC
     //START////////////////////////////////////////////////////////////////
     //InitPlayer(25, 25, 1, 1);
 
-    //Scene loading test
+    //! Scene loading test
     FILE* file_;// = malloc(sizeof(void*));
     char path[128] = { 0 };
     ConcatStrings(path, sizeof(path), gDebug.defaultDataPath, "Scenes/Testing.scn");
     fopen_s(&file_, path, "r");
     
+    bool shouldSave = false;
+    bool shouldLoad = false;
 
     if (file_ == NULL)
     {
         InitPlayer(25, 25, 1, 1);
 
         //Save Scene
-        fopen_s(&file_, path, "a+");
-        if (file_ != NULL)
+        if (shouldSave)
         {
-            fwrite(&player, sizeof(player), 1, file_);
-        }
-
-        if (file_ != NULL)
-        {
-            for (size_t i = 0; i < sizeof(player.components) / sizeof(ComponentInfo); i++)
+            fopen_s(&file_, path, "a+");
+            if (file_ != NULL)
             {
-                fwrite(player.components[i].memory, player.components[i].size, 1, file_);
-                //DS_CopyComponent(player.components[i].memory, &player, &player.components[i])//Filter yourself
+                fwrite(&player, sizeof(player), 1, file_);
             }
+
+            if (file_ != NULL)
+            {
+                for (size_t i = 0; i < sizeof(player.components) / sizeof(ComponentInfo); i++)
+                {
+                    fwrite(player.components[i].memory, player.components[i].size, 1, file_);
+                    //DS_CopyComponent(player.components[i].memory, &player, &player.components[i])//Filter yourself
+                }
+            }
+
+            /*for (size_t i = 0; i < gGameManager.allTiles; i++)
+             {
+
+             }*/
         }
-
-        /*for (size_t i = 0; i < gGameManager.allTiles; i++)
-         {
-
-         }*/
     }
-    else
+    else if (shouldLoad)
     {
         fread(&player, sizeof(player), 1, file_);
 
@@ -211,9 +216,20 @@ int WinMain(HINSTANCE hInstance, HINSTANCE dep_hPrevInst, PSTR lpCmdLine, int nC
     
     Entity* entity_ = InitEntity(OT_Entity);
     Transform* entTrans_ = AddComponent(DSID_Transform, entity_);
-    AddComponent(DSID_Collider, entity_);
+
     entTrans_->position.x = 100;
     entTrans_->position.y = 10;
+
+	//Add Collider Component
+    Collider* col_ = AddComponent(DSID_Collider, entity_);
+	col_->isTrigger = false;
+    //Collider_SetAABB(col_, 16, 16, 0, 0);
+    Collider_SetCircle(col_, 8, 0, 0);
+    /*col_->type = C2_TYPE_AABB;
+    col_->bounds.aabb.max.x = 16;
+    col_->bounds.aabb.max.y = 16;
+    col_->bounds.aabb.min.x = 0;
+    col_->bounds.aabb.min.y = 0;*/
 
     SpriteRenderer* entRend_ = AddComponent(DSID_SpriteRenderer, entity_);
     LoadSpriteFromSheet(&entRend_->sprite, &gGameManager.spriteCache[0], 128 + 16, 16, 16, 16, 0, 0, false);
@@ -446,9 +462,16 @@ int WinMain(HINSTANCE hInstance, HINSTANCE dep_hPrevInst, PSTR lpCmdLine, int nC
             DS_Update(UPDATE_MODE_NORMAL);
         }
 
+        //todo Change temp Fixed Update rate
+        if (gTime.totalFramesRendered % min(5, (int)gTime.targetFPS))
+        {
+            DS_Update(UPDATE_MODE_FIXED);
+        }
+
         RenderFrame();
 
-        DS_Update(UPDATE_MODE_LATE);
+		if (!gDebug.isInEditMode)
+            DS_Update(UPDATE_MODE_LATE);
 
         #pragma region Frame Calculations
         QueryPerformanceCounter((LARGE_INTEGER*)&frameEnd);

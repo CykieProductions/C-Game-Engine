@@ -2,9 +2,6 @@
 #include "Entities.h"
 #include "Components.h"
 
-#define ENTITY_LIMIT 3000//60fps 7000//30fps //9999//21fps
-#define TILE_LIMIT 9999
-
 #define UPDATE_MODE_START -1
 #define UPDATE_MODE_NORMAL 0
 #define UPDATE_MODE_LATE 1
@@ -12,7 +9,8 @@
 
 //Structs
 
-typedef struct GameManager
+//!Moved to Components.h - GameManager
+/*typedef struct GameManager
 {
 	Entity* allEntities[ENTITY_LIMIT];
 	long numOfEntities;
@@ -31,7 +29,7 @@ typedef struct GameManager
 	//Grab sprite data from a more permanant source
 	GAMEBITMAP spriteCache[128];
 
-} GameManager;
+} GameManager;*/
 
 /*typedef struct SpriteCacheEntry
 {
@@ -43,7 +41,7 @@ typedef struct GameManager
 
 //Globals
 
-extern GameManager gGameManager;
+//! Moved to Components.h - extern GameManager gGameManager;
 
 //Functions
 
@@ -51,6 +49,7 @@ extern GameManager gGameManager;
 
 void* AddComponent(DSID id, Entity* entity);
 void* GetComponent(DSID id, Entity* entity);
+bool HasComponent(DSID id, Entity* entity);
 void DS_CopyComponent(void* dest_, Entity* entity_, ComponentInfo* original_);
 
 void DS_Draw(void);

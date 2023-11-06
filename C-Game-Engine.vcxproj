@@ -43,7 +43,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -104,6 +104,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <CompileAs>CompileAsC</CompileAs>
+      <LanguageStandard_C>stdc11</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,6 +137,7 @@
     <ClCompile Include="Cytools.c" />
     <ClCompile Include="DriverSystem.c" />
     <ClCompile Include="Entities.c" />
+    <ClCompile Include="Include\cute_c2.c" />
     <ClCompile Include="Physics.c" />
     <ClCompile Include="Renderer.c" />
     <ClCompile Include="Vectors.c" />
@@ -145,6 +148,8 @@
     <ClInclude Include="Cytools.h" />
     <ClInclude Include="DriverSystem.h" />
     <ClInclude Include="Entities.h" />
+    <ClInclude Include="Include\cute_c2.h" />
+    <ClInclude Include="Include\cute_math.h" />
     <ClInclude Include="Physics.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Vectors.h" />

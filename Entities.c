@@ -204,12 +204,36 @@ void InitPlayer(int sPosX, int sPosY, int sSclX, int sSclY)
 	AddComponent(DSID_SpriteRenderer, &player);
 	Animator* anim_ = AddComponent(DSID_Animator, &player);
 	AddComponent(DSID_Rigidbody, &player);
-	Collider* collider = AddComponent(DSID_Collider, &player);
 
-	trans_->position.x = 25;
-	trans_->position.y = 25;
-	trans_->scaleX = 1;
-	trans_->scaleY = 1;
+	trans_->position.x = sPosX;
+	trans_->position.y = sPosY;
+	trans_->scaleX = sSclX;
+	trans_->scaleY = sSclY;
+
+	Collider* col_ = AddComponent(DSID_Collider, &player);
+	col_->isTrigger = false;
+	//Collider_SetAABB(col_, 16, 16, 0, 0);
+	Collider_SetCircle(col_, 8, 0, 0);
+
+	/*int colSize = 16;
+	col_->bounds.circle.r = colSize / 2;
+	col_->bounds.circle.p.x = colSize / 2;
+	col_->bounds.circle.p.y = colSize / 2;
+
+	col_->bounds.aabb.max.x = colSize;
+	col_->bounds.aabb.max.y = colSize;
+	col_->bounds.aabb.min.x = 0;
+	col_->bounds.aabb.min.y = 0;
+
+	col_->bounds.polygon.count = 4;
+	col_->bounds.polygon.verts[0].x = 0;
+	col_->bounds.polygon.verts[0].y = 0;
+	col_->bounds.polygon.verts[1].x = colSize;
+	col_->bounds.polygon.verts[1].y = 0;
+	col_->bounds.polygon.verts[2].x = colSize;
+	col_->bounds.polygon.verts[2].y = colSize;
+	col_->bounds.polygon.verts[3].x = 0;
+	col_->bounds.polygon.verts[3].y = colSize;*/
 
 	//player.renderer.flipX = true;
 

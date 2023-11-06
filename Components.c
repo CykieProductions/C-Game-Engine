@@ -3,6 +3,32 @@
 //#include "DriverSystem.h"
 #include "Renderer.h"
 
+GameManager gGameManager = { 0 };
+
+void* GetComponent(DSID id, Entity* entity_)
+{
+	if (entity_ == NULL)
+		return NULL;
+
+	for (size_t i = 0; i < sizeof(entity_->components) / (sizeof(void*) * 2); i++)
+	{
+		if (entity_->components[i].dsID == id)
+			return entity_->components[i].memory;
+	}
+	return NULL;
+}
+bool HasComponent(DSID id, Entity* entity_)
+{
+	if (entity_ == NULL)
+		return false;
+
+	for (size_t i = 0; i < sizeof(entity_->components) / (sizeof(void*) * 2); i++)
+	{
+		if (entity_->components[i].dsID == id)
+			return true;
+	}
+	return false;
+}
 void RemoveComponent(ComponentInfo* component_)
 {
 	/*switch (component_->dsID)
@@ -35,14 +61,6 @@ SpriteSliceData new_SpriteSliceData(SpriteCacheEntries sourceIndex, bool useSour
 	return ssd;
 }
 
-void Transform_Translate(Transform* trans, int x, int y)
-{
-	if ((*trans->entity).disabled == true)
-		return;
-
-	trans->position.x += x;
-	trans->position.y -= y;
-}
 
 DSMessage Animator_Play(Animator* anim_, char name[], int variant, bool looping, int priority, bool canInteruptSelf)
 {
@@ -176,5 +194,223 @@ void DrawSprite(SpriteRenderer* renderer, Transform* trans)
 			//Paste pixel into buffer/////////////////////////////////////
 			memcpy_s((Color32*)gBackBuffer.Memory + memOffset, sizeof(Color32), &pixel, sizeof(Color32));
 		}
+	}
+}
+
+//todo implement rotation
+c2x* TransformToC2X(Transform* trans_)
+{
+	c2x c2Transform = { 0 };
+	c2Transform.p.x = trans_->position.x;
+	c2Transform.p.y = trans_->position.y;
+
+	c2Transform.r.s = 0;//trans->rotation.sin;
+	c2Transform.r.c = 0;//trans->rotation.cos;
+	
+	return &c2Transform;
+}
+void Transform_TranslateNoCollision(Transform* trans_, int x, int y)
+{
+	if (x == 0 && y == 0)
+		return;
+	trans_->position.x += x;
+	trans_->position.y -= y;
+}
+void Transform_Translate(Transform* trans_, int x, int y)
+{
+	if ((*trans_->entity).disabled == true)
+		return;
+
+	Collision collision = { 0 };
+
+	//check for collisions
+	if (x != 0 || y != 0)
+	{
+		Rigidbody* rb_ = NULL;
+		if ((rb_ = GetComponent(DSID_Rigidbody, trans_->entity)) != NULL)
+		{
+			collision = Rigidbody_OffCollisionCheck(rb_, x, y);
+		}
+	}
+
+	//if (!collision.collided)
+	Transform_TranslateNoCollision(trans_, x - collision.resolve.x, y + collision.resolve.y);
+}
+
+Collision Rigidbody_CollisionCheck(Rigidbody* rb_)
+{
+	return Rigidbody_OffCollisionCheck(rb_, 0, 0);
+}
+Collision Rigidbody_OffCollisionCheck(Rigidbody* rb_, int xOff, int yOff)
+{
+	Collision result = { 0 };
+	for (size_t i = 0; i < sizeof(gGameManager.allColliders) / sizeof(void*); i++)
+	{
+		if (gGameManager.allColliders[i] == NULL)
+			continue;
+		if (rb_->colliders_[0] == NULL)
+			continue;
+		if (rb_->colliders_[0] == gGameManager.allColliders[i])//current collider is the same as rb's collider
+			continue;
+
+		//Trigger detection
+		if (rb_->colliders_[0]->isTrigger || gGameManager.allColliders[i]->isTrigger)
+		{
+			int collided = c2Collided(Collider_GetC2(rb_->colliders_[0], 0), TransformToC2X(rb_->trans_), rb_->colliders_[0]->type,
+				Collider_GetC2(gGameManager.allColliders[i], 0),
+				TransformToC2X(gGameManager.allColliders[i]->trans_), gGameManager.allColliders[i]->type);
+			if (collided)
+			{
+				c2x* _ = TransformToC2X(gGameManager.allColliders[i]->trans_);
+				//todo Implement trigger response
+				result.collided = true;
+			}
+		}
+		else
+		{
+			c2Manifold manifold = { 0 };
+			int iterations = COL_ITERATION_LIMIT;
+
+			do
+			{
+				Transform tmpT = { 
+					.entity = rb_->entity,
+					.position.x = rb_->trans_->position.x + xOff,
+					.position.y = rb_->trans_->position.y - yOff, //y is reversed
+					.positionZ = rb_->trans_->positionZ,
+					.scaleX = rb_->trans_->scaleX,
+					.scaleY = rb_->trans_->scaleY
+				};
+				//Cast the True Bounds ahead
+				Collider_UpdateTrueBounds(rb_->colliders_[0], &tmpT);
+				c2Collide(Collider_GetC2(rb_->colliders_[0], 0), TransformToC2X(&tmpT), rb_->colliders_[0]->type,
+					Collider_GetC2(gGameManager.allColliders[i], 0),
+					TransformToC2X(gGameManager.allColliders[i]->trans_), gGameManager.allColliders[i]->type, &manifold);
+
+				if (manifold.count > 0)
+				{
+					float max_depth = 0;
+					for (int j = 0; j < sizeof(manifold.depths) / sizeof(float); j++)
+					{
+						if (max_depth < manifold.depths[j])
+							max_depth = manifold.depths[j];
+					}
+					if (max_depth != 0)
+					{
+						result.manifold = manifold;
+						result.resolve = C2VToVec2(c2Mulvs(manifold.n, max_depth));
+						if (result.collided == false)
+							result.collided = true;
+						//Transform_TranslateNoCollision(rb_->trans_, -(int)offset.x, (int)offset.y);
+					}
+					else
+					{
+						iterations = 0;
+						break;
+					}
+				}
+				else
+				{
+					iterations = 0;
+					break;
+				}
+				iterations--;
+			} while (iterations > 0);
+		}
+	}
+
+	//Reset the collider's true bounds
+	Collider_UpdateTrueBounds(rb_->colliders_[0], NULL);
+	return result;
+}
+
+/// <summary>
+/// Get the Collider's "cute_c2" bounds data
+/// </summary>
+/// <param name="collider_">Target collider's address</param>
+/// <param name="memSize">Optional parameter for the c2 data size</param>
+/// <returns>The address of the trueData bounds</returns>
+void* Collider_GetC2(Collider* collider_, _Out_ int memSize)
+{
+	switch (collider_->type)
+	{
+	case C2_TYPE_AABB:
+		memSize = sizeof(c2AABB);
+		return &(collider_->trueData.aabb);
+
+	case C2_TYPE_CIRCLE:
+		memSize = sizeof(c2Circle);
+		return &(collider_->trueData.circle);
+
+	case C2_TYPE_CAPSULE:
+		memSize = sizeof(c2Capsule);
+		return &(collider_->trueData.capsule);
+
+	case C2_TYPE_POLY:
+		memSize = sizeof(c2Poly);
+		return &(collider_->bounds.polygon);
+
+	default:break;
+	}
+}
+
+void Collider_SetAABB(Collider* collider_, int sizeX, int sizeY, int offsetX, int offsetY)
+{
+	collider_->type = C2_TYPE_AABB;
+	collider_->bounds.aabb.min.x = offsetX + 0;
+	collider_->bounds.aabb.min.y = offsetY + 0;
+	collider_->bounds.aabb.max.x = offsetX + sizeX;
+	collider_->bounds.aabb.max.y = offsetY + sizeY;
+}
+void Collider_SetCircle(Collider* collider_, int radius, int offsetX, int offsetY)
+{
+	collider_->type = C2_TYPE_CIRCLE;
+	collider_->bounds.circle.r = radius;
+	collider_->bounds.circle.p.x = radius + offsetX;
+	collider_->bounds.circle.p.y = radius + offsetY;
+}
+void Collider_SetCapsule(Collider* collider_, int radius, c2v start, c2v end, int offsetX, int offsetY)
+{
+	collider_->type = C2_TYPE_CAPSULE;
+	collider_->bounds.capsule.r = radius;
+	collider_->bounds.capsule.a = c2V(start.x + offsetX, start.y + offsetY);
+	collider_->bounds.capsule.b = c2V(end.x + offsetX, end.y + offsetY);
+}
+
+
+/// <summary>
+/// Updates trueData with Transform offset
+/// </summary>
+/// <param name="collider_">Target collider</param>
+/// <param name="trans_">Leave NULL to use the Entity's transform</param>
+void Collider_UpdateTrueBounds(Collider* collider_, Transform* trans_)
+{
+	if (trans_ == NULL)
+		trans_ = collider_->trans_;
+
+	switch (collider_->type)
+	{
+	case C2_TYPE_AABB:
+		collider_->trueData.aabb.min.x = collider_->bounds.aabb.min.x + trans_->position.x;
+		collider_->trueData.aabb.min.y = collider_->bounds.aabb.min.y + trans_->position.y;
+		collider_->trueData.aabb.max.x = collider_->bounds.aabb.max.x + trans_->position.x;
+		collider_->trueData.aabb.max.y = collider_->bounds.aabb.max.y + trans_->position.y;
+		break;
+
+	case C2_TYPE_CIRCLE:
+		collider_->trueData.circle.p.x = collider_->bounds.circle.p.x + trans_->position.x;
+		collider_->trueData.circle.p.y = collider_->bounds.circle.p.y + trans_->position.y;
+		collider_->trueData.circle.r = collider_->bounds.circle.r;
+		break;
+
+	case C2_TYPE_CAPSULE:
+		collider_->trueData.capsule.a.x = collider_->bounds.capsule.a.x + trans_->position.x;
+		collider_->trueData.capsule.a.y = collider_->bounds.capsule.a.y + trans_->position.y;
+		collider_->trueData.capsule.b.x = collider_->bounds.capsule.b.x + trans_->position.x;
+		collider_->trueData.capsule.b.y = collider_->bounds.capsule.b.y + trans_->position.y;
+		break;
+
+	default://no need for polygons
+		break;
 	}
 }

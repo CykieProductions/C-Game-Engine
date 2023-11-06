@@ -3,11 +3,8 @@
 #include "Renderer.h"
 #include "Application.h"
 #include "Cytools.h"
-#include "Physics.h"
-
-//Externs
-
-GameManager gGameManager = { 0 };
+//#include "Physics.h"
+#include "Include/cute_c2.h"
 
 void* DS_RegisterComponent(void* component_, void* allOfType[], size_t listSize)
 {
@@ -33,6 +30,12 @@ void* DS_RegisterComponent(void* component_, void* allOfType[], size_t listSize)
 	}
 }*/
 
+/// <summary>
+/// 
+/// </summary>
+/// <param name="id">Determines the component type</param>
+/// <param name="entity">Target entity's pointer</param>
+/// <returns>The added component</returns>
 void* AddComponent(DSID id, Entity* entity)
 {
 	void* component = NULL;
@@ -122,7 +125,7 @@ void* AddComponent(DSID id, Entity* entity)
 		Collider* collider_ = (Collider*)component;
 
 		collider_->isTrigger = false;
-		collider_->type = CT_Rectangle;
+		/*collider_->type = CT_Rectangle;
 
 		collider_->Circle.radius = 16;
 		collider_->Rectangle.height = 16;
@@ -132,7 +135,7 @@ void* AddComponent(DSID id, Entity* entity)
 		collider_->Polygon.points[0] = (Vector2){ 0, collider_->Rectangle.height };//TL
 		collider_->Polygon.points[1] = (Vector2){ collider_->Rectangle.width, collider_->Rectangle.height };//TR
 		collider_->Polygon.points[2] = (Vector2){ collider_->Rectangle.width, 0 };//BR
-		collider_->Polygon.points[3] = (Vector2){ 0, 0 };//BL
+		collider_->Polygon.points[3] = (Vector2){ 0, 0 };//BL*/
 
 		collider_->trans_ = GetComponent(DSID_Transform, entity);
 		Rigidbody* rb_ = GetComponent(DSID_Rigidbody, entity);
@@ -195,18 +198,7 @@ Exit:
 	return component;
 }
 
-void* GetComponent(DSID id, Entity* entity_)
-{
-	if (entity_ == NULL)
-		return NULL;
-
-	for (size_t i = 0; i < sizeof(entity_->components) / (sizeof(void*) * 2); i++)
-	{
-		if (entity_->components[i].dsID == id)
-			return entity_->components[i].memory;
-	}
-	return NULL;
-}
+//Get component moved to Component.c
 
 //Filters what data will be copied
 void DS_CopyComponent(void* dest_, Entity* entity_, ComponentInfo* original_)
@@ -362,6 +354,13 @@ void DS_Update(const short MODE)
 		Component_OnUpdate(gGameManager.allColliders[i], DSID_Collider, MODE);
 	}
 }
+
+/// <summary>
+/// Updates the component based on the given ID and mode.
+/// </summary>
+/// <param name="component">A pointer to the component to update.</param>
+/// <param name="id">The ID of the component type.</param>
+/// <param name="MODE">The update mode (start, normal, late, or fixed).</param>
 void Component_OnUpdate(void* component, DSID id, const short MODE)
 {
 	if (component == NULL)
@@ -426,7 +425,7 @@ void Component_OnUpdate(void* component, DSID id, const short MODE)
 		Collider* collider_ = component;
 		if (MODE == UPDATE_MODE_NORMAL || MODE == UPDATE_MODE_START)
 		{
-			float totalX = 0;
+			/*float totalX = 0;
 			float totalY = 0;
 			for (size_t i = 0; i < collider_->Polygon.numOfPoints; i++)
 			{
@@ -442,7 +441,11 @@ void Component_OnUpdate(void* component, DSID id, const short MODE)
 			float avgX = totalX / collider_->Polygon.numOfPoints;
 			float avgY = totalY / collider_->Polygon.numOfPoints;
 
-			collider_->center = (Vector2){ avgX,avgY };
+			collider_->center = (Vector2){ avgX,avgY };*/
+			
+			//! Will likely have to manually factor in the scale
+			Collider_UpdateTrueBounds(collider_, NULL);
+
 		}
 		else if (MODE == UPDATE_MODE_LATE)
 		{
@@ -462,86 +465,7 @@ void Component_OnUpdate(void* component, DSID id, const short MODE)
 		}
 		else if (MODE == UPDATE_MODE_NORMAL)
 		{
-			for (size_t i = 0; i < sizeof(gGameManager.allColliders) / sizeof(void*); i++)
-			{
-				if (rb_->colliders_[0] == gGameManager.allColliders[i])
-					continue;
-				if (gGameManager.allColliders[i] == NULL)
-					continue;
-
-				if (PolygonInPolyTrigger(rb_->colliders_[0]->truePoints, rb_->colliders_[0]->Polygon.numOfPoints,
-					gGameManager.allColliders[i]->truePoints, gGameManager.allColliders[i]->Polygon.numOfPoints).collided)
-				{
-					Collision_Poly polyCol = PolygonInPolygon(rb_->colliders_[0]->truePoints, rb_->colliders_[0]->Polygon.numOfPoints,
-						gGameManager.allColliders[i]->truePoints, gGameManager.allColliders[i]->Polygon.numOfPoints);
-					Collision_Point collision = { 0 };
-
-					//Get collision closeset to center
-					float distToCenter = 0;
-					for (size_t i = 0; i < polyCol.numOfCollisions; i++)
-					{
-						float curDist = Vec2Distance(polyCol.collisions[i].point, rb_->colliders_[0]->center);
-
-						if (i == 0 || curDist < distToCenter)
-						{
-							distToCenter = curDist;
-							collision = polyCol.collisions[i];
-						}
-					}
-					//Transform* otherTrans_ = GetComponent(DSID_Transform, gGameManager.allColliders[i]->entity);
-
-
-					float minDist = 0;
-					int closestIndex = 0;
-					Vector2 clamp = { 0 };
-					for (size_t i = 0; i < collision.numOfEdges; i++)
-					{
-						clamp = (Vector2){
-							ClampFloat(collision.point.x, collision.edges[i].start.x, 
-								collision.edges[i].end.x),
-
-							ClampFloat(collision.point.y, collision.edges[i].start.y, 
-								collision.edges[i].end.y)
-						};
-						float curDist = Vec2Distance(clamp, collision.point);
-
-						if (i == 0 || curDist < minDist)//Find the closest cross point
-						{
-							minDist = curDist;
-							closestIndex = i;
-						}
-					}
-					clamp = (Vector2){
-							ClampFloat(collision.point.x, collision.edges[closestIndex].start.x,
-								collision.edges[closestIndex].end.x),
-
-							ClampFloat(collision.point.y, collision.edges[closestIndex].start.y,
-								collision.edges[closestIndex].end.y)
-					};
-
-					if (minDist > 0)
-						minDist = minDist;
-					rb_->trans_->position = Vec2ToVec2INT(Vec2Add(Vec2INTToVec2(rb_->trans_->position), 
-						Vec2MultiplyF(collision.edges[closestIndex].normal, minDist)));
-
-					//Vector2 pntToCrossDir = Vec2Add(collision.point, 
-						//Vec2MultiplyF(collision.crosses[closestIndex], -1));
-						//Vec2MultiplyF(Vec2INTToVec2(rb_->trans_->position), -1));
-					//Vec2Normalize(&pntToCrossDir);//These two lines cancel out
-					//pntToCrossDir = Vec2MultiplyF(pntToCrossDir, minDist);
-
-					Vector2 dir = { 1, 1 };
-					//if (rb_->trans_->position.x > otherTrans_->position.x)
-						//dir.x = -1;
-					//pntToCrossDir = pntToCrossDir;
-					Vector2 accel = Vec2Add(Vec2INTToVec2(rb_->trans_->position), Vec2MultiplyF(rb_->prevPos, -1));
-
-					Component_OnUpdate(rb_->colliders_[0], DSID_Collider, UPDATE_MODE_NORMAL);
-					
-					//collision = PolygonInPolygon(rb_->colliders_[0]->truePoints, rb_->colliders_[0]->Polygon.numOfPoints,
-						//gGameManager.allColliders[i]->truePoints, gGameManager.allColliders[i]->Polygon.numOfPoints);
-				}//end of loop
-			}
+			
 		}
 		else if (MODE == UPDATE_MODE_LATE)
 		{
@@ -549,7 +473,12 @@ void Component_OnUpdate(void* component, DSID id, const short MODE)
 		}
 		else if (MODE == UPDATE_MODE_FIXED)
 		{
-
+			//Check if we've moved since the last frame
+			if (rb_->trans_->position.x != rb_->prevPos.x || rb_->trans_->position.y != rb_->prevPos.y)
+			{
+				//! Collision Detection
+				//Rigidbody_CollisionCheck(rb_);
+			}
 		}
 		break;}
 
