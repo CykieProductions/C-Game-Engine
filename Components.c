@@ -234,7 +234,7 @@ void Transform_Translate(Transform* trans_, int x, int y)
 	}
 
 	//if (!collision.collided)
-	Transform_TranslateNoCollision(trans_, x - collision.resolve.x, y + collision.resolve.y);
+	Transform_TranslateNoCollision(trans_, x - RoundUpAbsF(collision.resolve.x), y + RoundUpAbsF(collision.resolve.y));
 }
 
 Collision Rigidbody_CollisionCheck(Rigidbody* rb_)
@@ -353,7 +353,6 @@ void* Collider_GetC2(Collider* collider_, _Out_ int memSize)
 	default:break;
 	}
 }
-
 void Collider_SetAABB(Collider* collider_, int sizeX, int sizeY, int offsetX, int offsetY)
 {
 	collider_->type = C2_TYPE_AABB;

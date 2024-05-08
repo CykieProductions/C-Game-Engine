@@ -159,6 +159,17 @@ float WrapFloat(float input, float min, float max)
     return input;
 }
 
+int RoundUpAbsF(float input)
+{
+	int whole = 0;
+	if (input > 0)
+		whole = ceilf(input);
+	else if (input < 0)
+		whole = floorf(input);
+
+    return whole;
+}
+
 void FillArrayWithValue(void* array[],size_t sizeOfArray, void* value, size_t valSize)
 {
     memset(array, value, sizeOfArray);// * valSize);

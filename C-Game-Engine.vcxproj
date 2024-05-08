@@ -149,7 +149,6 @@
     <ClInclude Include="DriverSystem.h" />
     <ClInclude Include="Entities.h" />
     <ClInclude Include="Include\cute_c2.h" />
-    <ClInclude Include="Include\cute_math.h" />
     <ClInclude Include="Physics.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Vectors.h" />
